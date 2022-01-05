@@ -1,0 +1,13 @@
+{
+    "name": "vanilla/garden-git",
+    "description": "A PHP library for working with git and github.",
+    "type": "project",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Adam Charron",
+            "email": "adam@charrondev.com"
+        }
+    ],
+    "require": {}
+}
