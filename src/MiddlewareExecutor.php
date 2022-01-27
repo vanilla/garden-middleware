@@ -20,10 +20,7 @@ use Generator;
  */
 final class MiddlewareExecutor {
 
-    /** @var MiddlewareTipInterface<TParams, TResult> */
-    private $tip;
-
-    /** @var Array<array-key, MiddlewareInterface<TParams, TResult>> */
+    /** @var array<array-key, MiddlewareInterface<TParams, TResult>> */
     private $middlewares;
 
     /** @var string */
@@ -32,12 +29,10 @@ final class MiddlewareExecutor {
     /**
      * DI.
      *
-     * @param MiddlewareTipInterface<TParams, TResult> $tip
-     * @param Array<MiddlewareInterface<TParams, TResult>> $middlewares
+     * @param array<MiddlewareInterface<TParams, TResult>> $middlewares
      * @param string $order One of the ORDER_* constants.
      */
-    public function __construct(MiddlewareTipInterface $tip, array $middlewares, string $order) {
-        $this->tip = $tip;
+    public function __construct(array $middlewares, string $order) {
         $this->middlewares = $middlewares;
         $this->order = $order;
     }
@@ -45,12 +40,30 @@ final class MiddlewareExecutor {
     /**
      * Run the middleware stack.
      *
+     * @param MiddlewareTipInterface<TParams, TResult> $tip
      * @param TParams $params Params to execute with.
      *
      * @return TResult The result.
      * @throws InvalidMiddlewareException
      */
-    public function run($params) {
+    public function process(MiddlewareTipInterface $tip, $params) {
+        [$middlewareStack, $params] = $this->processParams($params);
+
+        // Run the seed.
+        $result = $tip->run($params);
+        $result = $this->processResult($middlewareStack, $result);
+        return $result;
+    }
+
+    /**
+     *
+     * Process the params for a middleware.
+     *
+     * @param TParams $params The params for the current run.
+     *
+     * @return array{array<array{class-string, Generator}>, TParams}
+     */
+    public function processParams($params): array {
         $middlewareStack = [];
 
         $originalType = get_class($params);
@@ -82,9 +95,16 @@ final class MiddlewareExecutor {
 
             $middlewareStack[] = [$middlewareClass, $generator];
         }
+        return [$middlewareStack, $params];
+    }
 
-        // Run the seed.
-        $result = $this->tip->process($params);
+    /**
+     * @param array<array{class-string, Generator}> $middlewareStack
+     * @param TResult $result
+     * @return TResult
+     * @throws InvalidMiddlewareException
+     */
+    public function processResult(array $middlewareStack, $result) {
         $expectedResultClass = get_class($result);
 
         /** @var Generator<array-key, TParams, TResult, TResult> $middlewareGenerator */
@@ -111,7 +131,6 @@ final class MiddlewareExecutor {
                 throw new InvalidMiddlewareException($message);
             }
         }
-
         return $result;
     }
 

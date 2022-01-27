@@ -32,11 +32,17 @@ class MiddlewareCollectionTest extends TestCase {
         /** @var MiddlewareCollection<MockMiddlewareData, MockMiddlewareData> $collection */
         $collection = new MiddlewareCollection();
         $this->collection = $collection;
-        $this->collection
-            ->seedCollection(new MockMiddlewareTip('result'))
-            ->addMiddleware(new MockMiddleware('middle1'))
+
+        $middleCollection = new MiddlewareCollection();
+        $middleCollection
             ->addMiddleware(new MockMiddleware('middle2'))
             ->addMiddleware(new MockMiddleware('middle3'))
+        ;
+
+        $this->collection
+            ->setTip(new MockMiddlewareTip('result'))
+            ->addMiddleware(new MockMiddleware('middle1'))
+            ->addMiddleware($middleCollection)
             ->addMiddleware(new MockMiddleware('middle4'))
         ;
     }
@@ -90,7 +96,6 @@ class MiddlewareCollectionTest extends TestCase {
         $this->collection->addMiddleware(new BadMiddleware(BadMiddleware::MODE_NO_YIELD));
         $this->expectExceptionMessage("Middleware did not yield: Garden\Middleware\Tests\Fixtures\BadMiddleware");
         $result = $this->collection->run($params);
-
     }
 
     /**
@@ -101,7 +106,6 @@ class MiddlewareCollectionTest extends TestCase {
         $this->collection->addMiddleware(new BadMiddleware(BadMiddleware::MODE_NO_RETURN));
         $this->expectExceptionMessage("Middleware not return a result: Garden\Middleware\Tests\Fixtures\BadMiddleware");
         $result = $this->collection->run($params);
-
     }
 
     /**

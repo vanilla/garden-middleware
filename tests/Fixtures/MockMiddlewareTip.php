@@ -33,7 +33,7 @@ final class MockMiddlewareTip implements MiddlewareTipInterface {
      * @param MockMiddlewareData $params
      * @return MockMiddlewareData
      */
-    public function process($params): MockMiddlewareData {
+    public function run($params): MockMiddlewareData {
         return new MockMiddlewareData($this->result);
     }
 }

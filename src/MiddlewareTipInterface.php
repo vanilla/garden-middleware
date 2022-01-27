@@ -24,5 +24,5 @@ interface MiddlewareTipInterface {
      *
      * @psalm-return TResult
      */
-    public function process($params);
+    public function run($params);
 }

@@ -14,14 +14,17 @@ use Garden\Middleware\Exception\InvalidMiddlewareException;
 /**
  * @template TParams of object
  * @template TResult of object
+ *
+ * @implements MiddlewareInterface<TParams, TResult>
+ * @implements MiddlewareTipInterface<TParams, TResult>
  */
-final class MiddlewareCollection {
+final class MiddlewareCollection implements MiddlewareInterface, MiddlewareTipInterface {
 
     public const ORDER_FIFO = "fifo";
     public const ORDER_LIFO = "lifo";
 
     /** @var MiddlewareTipInterface<TParams, TResult> */
-    private $seed;
+    private $tip;
 
     /** @var Array<array-key, MiddlewareInterface<TParams, TResult>> */
     protected $middlewares = [];
@@ -43,6 +46,11 @@ final class MiddlewareCollection {
      */
     public function setOrder(string $order): void {
         $this->order = $order;
+        foreach ($this->middlewares as $middleware) {
+            if ($middleware instanceof MiddlewareCollection) {
+                $middleware->setOrder($order);
+            }
+        }
     }
 
     /**
@@ -51,11 +59,11 @@ final class MiddlewareCollection {
      * For example in a web middleware the seed would be the request handler that generates a response.
      * In a database middleware the seed would be the method that looks up the item in the database.
      *
-     * @param MiddlewareTipInterface<TParams, TResult> $seed
+     * @param MiddlewareTipInterface<TParams, TResult> $tip
      * @return MiddlewareCollection<TParams, TResult>
      */
-    public function seedCollection(MiddlewareTipInterface $seed): MiddlewareCollection {
-        $this->seed = $seed;
+    public function setTip(MiddlewareTipInterface $tip): MiddlewareCollection {
+        $this->tip = $tip;
         return $this;
     }
 
@@ -80,11 +88,19 @@ final class MiddlewareCollection {
      * @throws InvalidMiddlewareException
      */
     public function run($params) {
-        if ($this->seed === null) {
+        if ($this->tip === null) {
             throw new InvalidMiddlewareException('Cannot run middleware without seeding it.');
         }
 
-        $executor = new MiddlewareExecutor($this->seed, $this->middlewares, $this->order);
-        return $executor->run($params);
+        $executor = new MiddlewareExecutor($this->middlewares, $this->order);
+        return $executor->process($this->tip, $params);
+    }
+
+    public function process($params): \Generator {
+        $executor = new MiddlewareExecutor($this->middlewares, $this->order);
+        [$middlewareStack, $params] = $executor->processParams($params);
+        $result = yield $params;
+        $result = $executor->processResult($middlewareStack, $result);
+        return $result;
     }
 }
